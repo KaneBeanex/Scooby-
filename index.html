@@ -8,7 +8,7 @@
     <meta name="theme-color" content="#a3e635">
     <link rel="stylesheet" href="style.css">
     <style>
-        /* Small style for the update notification */
+        /* Update Notification Styles */
         #update-toast {
             position: fixed;
             bottom: 20px;
@@ -16,18 +16,19 @@
             transform: translateX(-50%);
             background: #a3e635;
             color: #000;
-            padding: 10px 20px;
+            padding: 12px 24px;
             border-radius: 50px;
             display: none;
             font-weight: bold;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-            z-index: 1000;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.6);
+            z-index: 3000;
             cursor: pointer;
+            border: 2px solid #000;
         }
     </style>
 </head>
 <body>
-    <div id="update-toast" onclick="location.reload()">New Update Available! Tap to Refresh 🚀</div>
+    <div id="update-toast">New Case Update! Tap to Refresh 🚀</div>
 
     <div class="app-container">
         <header>
@@ -37,13 +38,16 @@
 
         <div class="input-group">
             <label>Secret Key (5+ Chars)</label>
-            <input type="text" id="secretKey" maxlength="15" placeholder="Default: 00000">
+            <input type="text" id="secretKey" maxlength="15" placeholder="00000">
         </div>
 
         <section class="workspace">
             <div class="label-row">
                 <label>Input Evidence</label>
-                <button id="pasteBtn" class="small-btn">Paste 📋</button>
+                <div>
+                    <button class="small-btn" onclick="openFull('inputText')">⛶ Full</button>
+                    <button id="pasteBtn" class="small-btn">📋 Paste</button>
+                </div>
             </div>
             <textarea id="inputText" placeholder="Enter message or cryptic code..."></textarea>
             
@@ -52,52 +56,68 @@
                 <button id="decodeBtn" class="btn-secondary">DECODE 🔓</button>
             </div>
 
-            <label>Result</label>
-            <textarea id="outputText" readonly></textarea>
+            <div class="label-row">
+                <label>Result</label>
+                <button class="small-btn" onclick="openFull('outputText')">⛶ Full</button>
+            </div>
+            <textarea id="outputText" readonly placeholder="Result will appear here..."></textarea>
+
+            <div class="history-bar">
+                <button id="undoBtn">Undo ↶</button>
+                <button id="redoBtn">Redo ↷</button>
+                <button id="clearBtn" style="color: #ff4444; border-color: #450a0a;">Clear 🗑</button>
+            </div>
         </section>
 
         <footer>
-            <button id="copyBtn">Copy Result 📁</button>
+            <button id="copyBtn" class="btn-primary" style="width: 100%; margin-top: 10px; background: transparent; color: var(--accent); border: 1px solid var(--accent);">
+                Copy Result 📁
+            </button>
         </footer>
+    </div>
+
+    <div id="fullScreenOverlay" class="fullscreen-overlay">
+        <div class="overlay-header">
+            <h2 id="overlayTitle" class="accent">DETECTIVE FOCUS</h2>
+            <button onclick="closeFull()" class="btn-secondary" style="padding: 5px 15px;">Close ✕</button>
+        </div>
+        <textarea id="fullArea" placeholder="Start writing..."></textarea>
     </div>
 
     <script src="script.js"></script>
     <script>
-      let newWorker;
+        // --- Service Worker & Update Logic ---
+        let newWorker;
 
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('./sw.js').then(reg => {
-            reg.addEventListener('updatefound', () => {
-              newWorker = reg.installing;
-              newWorker.addEventListener('statechange', () => {
-                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                  // Show the update toast
-                  document.getElementById('update-toast').style.display = 'block';
-                }
-              });
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js').then(reg => {
+                    reg.addEventListener('updatefound', () => {
+                        newWorker = reg.installing;
+                        newWorker.addEventListener('statechange', () => {
+                            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                document.getElementById('update-toast').style.display = 'block';
+                            }
+                        });
+                    });
+                });
             });
-          });
-        });
 
-        // Add a listener to refresh the page once the new SW takes control
-        let refreshing;
-        navigator.serviceWorker.addEventListener('controllerchange', () => {
-          if (refreshing) return;
-          window.location.reload();
-          refreshing = true;
-        });
-      }
-
-      // This function can be called by the toast button
-      function updateApp() {
-        if (newWorker) {
-          newWorker.postMessage('SKIP_WAITING');
+            let refreshing;
+            navigator.serviceWorker.addEventListener('controllerchange', () => {
+                if (refreshing) return;
+                window.location.reload();
+                refreshing = true;
+            });
         }
-      }
 
-      // Attach the update trigger to the toast
-      document.getElementById('update-toast').addEventListener('click', updateApp);
+        function updateApp() {
+            if (newWorker) {
+                newWorker.postMessage('SKIP_WAITING');
+            }
+        }
+
+        document.getElementById('update-toast').addEventListener('click', updateApp);
     </script>
 </body>
 </html>
