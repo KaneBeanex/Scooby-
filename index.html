@@ -85,39 +85,47 @@
     </div>
 
     <script src="script.js"></script>
-    <script>
-        // --- Service Worker & Update Logic ---
-        let newWorker;
+<script>
+let newWorker;
 
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./sw.js').then(reg => {
-                    reg.addEventListener('updatefound', () => {
-                        newWorker = reg.installing;
-                        newWorker.addEventListener('statechange', () => {
-                            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                                document.getElementById('update-toast').style.display = 'block';
-                            }
-                        });
-                    });
-                });
-            });
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').then(reg => {
 
-            let refreshing;
-            navigator.serviceWorker.addEventListener('controllerchange', () => {
-                if (refreshing) return;
-                window.location.reload();
-                refreshing = true;
-            });
-        }
+      reg.addEventListener('updatefound', () => {
+        newWorker = reg.installing;
 
-        function updateApp() {
-            if (newWorker) {
-                newWorker.postMessage('SKIP_WAITING');
-            }
-        }
+        newWorker.addEventListener('statechange', () => {
+          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
 
-        document.getElementById('update-toast').addEventListener('click', updateApp);
-    </script>
+            // ⏳ Delay so user actually sees it
+            setTimeout(() => {
+              document.getElementById('update-toast').style.display = 'block';
+            }, 600);
+          }
+        });
+      });
+    });
+  });
+
+  let refreshing;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (refreshing) return;
+    refreshing = true;
+    window.location.reload();
+  });
+}
+
+// 🔥 Trigger update
+function updateApp() {
+  if (newWorker) {
+    newWorker.postMessage('SKIP_WAITING');
+  }
+}
+
+document.getElementById('update-toast').addEventListener('click', updateApp);
+</script>
+    
+
 </body>
 </html>
