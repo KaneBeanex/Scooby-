@@ -1,4 +1,4 @@
-const CACHE_NAME = 'scooby-v1.3.2';
+const CACHE_NAME = 'scooby-v1.0.3';
 
 const ASSETS = [
   './',
@@ -10,8 +10,10 @@ const ASSETS = [
   './icon-512.png'
 ];
 
-// 🟡 INSTALL (resilient caching)
+// 🟡 INSTALL
 self.addEventListener('install', event => {
+  self.skipWaiting(); // 🔥 ensure new SW moves forward
+
   event.waitUntil(
     caches.open(CACHE_NAME).then(cache =>
       Promise.allSettled(
@@ -21,7 +23,7 @@ self.addEventListener('install', event => {
   );
 });
 
-// 🟢 ACTIVATE (clean old cache)
+// 🟢 ACTIVATE
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys().then(keys =>
@@ -35,17 +37,17 @@ self.addEventListener('activate', event => {
     )
   );
 
-  return self.clients.claim();
+  return self.clients.claim(); // 🔥 take control immediately
 });
 
-// 🔥 USER-CONTROLLED UPDATE
+// 🔥 FORCE UPDATE WHEN USER CLICKS
 self.addEventListener('message', event => {
   if (event.data === 'SKIP_WAITING') {
     self.skipWaiting();
   }
 });
 
-// 🔵 FETCH (cache-first strategy)
+// 🔵 FETCH
 self.addEventListener('fetch', event => {
   event.respondWith(
     caches.match(event.request).then(res => res || fetch(event.request))
