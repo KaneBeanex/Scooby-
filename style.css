@@ -76,3 +76,46 @@ button {
     color: var(--accent);
     padding: 10px;
 }
+
+
+/* Full-screen overlay */
+.fullscreen-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: var(--bg);
+    z-index: 2000;
+    display: none;
+    flex-direction: column;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+.fullscreen-overlay textarea {
+    flex-grow: 1;
+    font-size: 1.2rem;
+    margin-top: 10px;
+}
+
+.overlay-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+/* History buttons */
+.history-bar {
+    display: flex;
+    gap: 10px;
+    margin-top: 5px;
+}
+
+.history-bar button {
+    font-size: 0.8rem;
+    padding: 5px 10px;
+    background: #334155;
+    color: var(--text);
+}
+
