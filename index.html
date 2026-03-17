@@ -8,7 +8,6 @@
     <meta name="theme-color" content="#a3e635">
     <link rel="stylesheet" href="style.css">
     <style>
-        /* Update Notification Styles */
         #update-toast {
             position: fixed;
             bottom: 20px;
@@ -24,11 +23,15 @@
             z-index: 3000;
             cursor: pointer;
             border: 2px solid #000;
+            animation: slideUp 0.3s ease-out;
         }
+        @keyframes slideUp { from { bottom: -50px; } to { bottom: 20px; } }
+        .history-bar { display: flex; gap: 10px; margin-top: 10px; }
+        .history-bar button { flex: 1; }
     </style>
 </head>
 <body>
-    <div id="update-toast">New Case Update! Tap to Refresh 🚀</div>
+    <div id="update-toast" onclick="updateApp()">New Case Update! Tap to Refresh 🚀</div>
 
     <div class="app-container">
         <header>
@@ -37,7 +40,7 @@
         </header>
 
         <div class="input-group">
-            <label>Secret Key (5+ Chars)</label>
+            <label for="secretKey">Secret Key (5+ Chars)</label>
             <input type="text" id="secretKey" maxlength="15" placeholder="00000">
         </div>
 
@@ -63,20 +66,21 @@
             <textarea id="outputText" readonly placeholder="Result will appear here..."></textarea>
 
             <div class="history-bar">
-                <button id="undoBtn">Undo ↶</button>
+                <button id="undoBtn">↶ Undo</button>
                 <button id="redoBtn">Redo ↷</button>
-                <button id="clearBtn" style="color: #ff4444; border-color: #450a0a;">Clear 🗑</button>
+                <button id="clearBtn" style="color: #ff4444; border-color: #450a0a;">🗑 Clear</button>
             </div>
         </section>
 
         <footer>
-            <button id="copyBtn" class="btn-primary" style="width: 100%; margin-top: 10px; background: transparent; color: var(--accent); border: 1px solid var(--accent);">
+            <button id="copyBtn" class="btn-primary" style="width: 100%; margin-top: 10px; background: transparent; color: #a3e635; border: 1px solid #a3e635;">
                 Copy Result 📁
             </button>
         </footer>
     </div>
 
-    <div id="fullScreenOverlay" class="fullscreen-overlay">
+    <!-- Fullscreen Overlay -->
+    <div id="fullScreenOverlay" class="fullscreen-overlay" style="display:none;">
         <div class="overlay-header">
             <h2 id="overlayTitle" class="accent">DETECTIVE FOCUS</h2>
             <button onclick="closeFull()" class="btn-secondary" style="padding: 5px 15px;">Close ✕</button>
@@ -85,47 +89,62 @@
     </div>
 
     <script src="script.js"></script>
-<script>
-let newWorker;
+    <script>
+        let newWorker;
 
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js').then(reg => {
+        // Service Worker Registration
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js').then(reg => {
+                    // Check for updates on load
+                    if (reg.waiting) {
+                        showUpdateToast(reg.waiting);
+                    }
 
-      reg.addEventListener('updatefound', () => {
-        newWorker = reg.installing;
+                    reg.addEventListener('updatefound', () => {
+                        newWorker = reg.installing;
+                        newWorker.addEventListener('statechange', () => {
+                            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                showUpdateToast(newWorker);
+                            }
+                        });
+                    });
+                });
+            });
 
-        newWorker.addEventListener('statechange', () => {
-          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+            let refreshing;
+            navigator.serviceWorker.addEventListener('controllerchange', () => {
+                if (refreshing) return;
+                refreshing = true;
+                window.location.reload();
+            });
+        }
 
-            // ⏳ Delay so user actually sees it
-            setTimeout(() => {
-              document.getElementById('update-toast').style.display = 'block';
-            }, 600);
-          }
-        });
-      });
-    });
-  });
+        function showUpdateToast(worker) {
+            newWorker = worker;
+            const toast = document.getElementById('update-toast');
+            toast.style.display = 'block';
+        }
 
-  let refreshing;
-  navigator.serviceWorker.addEventListener('controllerchange', () => {
-    if (refreshing) return;
-    refreshing = true;
-    window.location.reload();
-  });
-}
+        function updateApp() {
+            if (newWorker) {
+                newWorker.postMessage({ action: 'skipWaiting' });
+            }
+        }
 
-// 🔥 Trigger update
-function updateApp() {
-  if (newWorker) {
-    newWorker.postMessage('SKIP_WAITING');
-  }
-}
+        // Quick UI Logic (To ensure buttons work if script.js is missing basics)
+        function openFull(id) {
+            const overlay = document.getElementById('fullScreenOverlay');
+            const fullArea = document.getElementById('fullArea');
+            const source = document.getElementById(id);
+            fullArea.value = source.value;
+            overlay.style.display = 'flex';
+            // Sync back logic should be in script.js
+        }
 
-document.getElementById('update-toast').addEventListener('click', updateApp);
-</script>
-    
-
+        function closeFull() {
+            document.getElementById('fullScreenOverlay').style.display = 'none';
+        }
+    </script>
 </body>
 </html>
