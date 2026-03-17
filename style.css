@@ -1,0 +1,78 @@
+:root {
+    --bg: #0f172a;
+    --card: #1e293b;
+    --accent: #a3e635;
+    --text: #f1f5f9;
+    --secondary: #8b5cf6;
+}
+
+body {
+    background-color: var(--bg);
+    color: var(--text);
+    font-family: 'Courier New', Courier, monospace;
+    margin: 0;
+    display: flex;
+    justify-content: center;
+    padding: 20px;
+}
+
+.app-container {
+    width: 100%;
+    max-width: 450px;
+    background: var(--card);
+    padding: 1.5rem;
+    border-radius: 12px;
+    border: 2px solid #334155;
+}
+
+.label-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 5px;
+}
+
+.small-btn {
+    padding: 4px 8px;
+    font-size: 0.7rem;
+    background: #334155;
+    color: var(--accent);
+}
+
+input, textarea {
+    width: 100%;
+    background: #020617;
+    border: 1px solid #334155;
+    color: var(--accent);
+    padding: 10px;
+    border-radius: 4px;
+    box-sizing: border-box;
+    margin-bottom: 10px;
+}
+
+textarea { height: 100px; }
+
+.controls {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin: 15px 0;
+}
+
+button {
+    cursor: pointer;
+    border: none;
+    font-weight: bold;
+    border-radius: 4px;
+}
+
+.btn-primary { background: var(--accent); color: #000; padding: 12px; }
+.btn-secondary { background: var(--secondary); color: #fff; padding: 12px; }
+
+#copyBtn {
+    width: 100%;
+    background: transparent;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    padding: 10px;
+}
