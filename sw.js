@@ -1,4 +1,4 @@
-const CACHE_NAME = 'Scooby!_v1/0/2';
+const CACHE_NAME = 'Scooby!_v1/01/2';
 
 const ASSETS = [
   './',
