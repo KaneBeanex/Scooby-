@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scooby Detective Kit Pro</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#a3e635">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <header>
+            <h1>🔍 SCOOBY <span class="accent">PRO</span></h1>
+            <p>Nonlinear Cryptic Messaging</p>
+        </header>
+
+        <div class="input-group">
+            <label>Secret Key (5+ Chars)</label>
+            <input type="text" id="secretKey" maxlength="15" placeholder="Default: 00000">
+        </div>
+
+        <section class="workspace">
+            <div class="label-row">
+                <label>Input Evidence</label>
+                <button id="pasteBtn" class="small-btn">Paste 📋</button>
+            </div>
+            <textarea id="inputText" placeholder="Enter message or cryptic code..."></textarea>
+            
+            <div class="controls">
+                <button id="encodeBtn" class="btn-primary">ENCODE 🔒</button>
+                <button id="decodeBtn" class="btn-secondary">DECODE 🔓</button>
+            </div>
+
+            <label>Result</label>
+            <textarea id="outputText" readonly></textarea>
+        </section>
+
+        <footer>
+            <button id="copyBtn">Copy Result 📁</button>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          // The dot-slash (./) is important for GitHub Pages subfolders
+          navigator.serviceWorker.register('./sw.js')
+            .then(reg => console.log('Scooby is on the case!', reg))
+            .catch(err => console.log('Service worker failed:', err));
+        });
+      }
+    </script>
+</body>
+</html>
