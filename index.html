@@ -7,8 +7,28 @@
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#a3e635">
     <link rel="stylesheet" href="style.css">
+    <style>
+        /* Small style for the update notification */
+        #update-toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #a3e635;
+            color: #000;
+            padding: 10px 20px;
+            border-radius: 50px;
+            display: none;
+            font-weight: bold;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            z-index: 1000;
+            cursor: pointer;
+        }
+    </style>
 </head>
 <body>
+    <div id="update-toast" onclick="location.reload()">New Update Available! Tap to Refresh 🚀</div>
+
     <div class="app-container">
         <header>
             <h1>🔍 SCOOBY <span class="accent">PRO</span></h1>
@@ -43,14 +63,41 @@
 
     <script src="script.js"></script>
     <script>
+      let newWorker;
+
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          // The dot-slash (./) is important for GitHub Pages subfolders
-          navigator.serviceWorker.register('./sw.js')
-            .then(reg => console.log('Scooby is on the case!', reg))
-            .catch(err => console.log('Service worker failed:', err));
+          navigator.serviceWorker.register('./sw.js').then(reg => {
+            reg.addEventListener('updatefound', () => {
+              newWorker = reg.installing;
+              newWorker.addEventListener('statechange', () => {
+                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                  // Show the update toast
+                  document.getElementById('update-toast').style.display = 'block';
+                }
+              });
+            });
+          });
+        });
+
+        // Add a listener to refresh the page once the new SW takes control
+        let refreshing;
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          if (refreshing) return;
+          window.location.reload();
+          refreshing = true;
         });
       }
+
+      // This function can be called by the toast button
+      function updateApp() {
+        if (newWorker) {
+          newWorker.postMessage('SKIP_WAITING');
+        }
+      }
+
+      // Attach the update trigger to the toast
+      document.getElementById('update-toast').addEventListener('click', updateApp);
     </script>
 </body>
 </html>
