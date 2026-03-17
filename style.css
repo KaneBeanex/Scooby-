@@ -78,25 +78,26 @@ button {
 }
 
 
-/* Full-screen overlay */
-.fullscreen-overlay {
+/* Prevent layout break */
+textarea {
+    resize: none;
+}
+
+/* 🔥 Fullscreen mode */
+.fullscreen {
     position: fixed;
     top: 0;
     left: 0;
-    width: 100vw;
-    height: 100vh;
-    background: var(--bg);
-    z-index: 2000;
-    display: none;
-    flex-direction: column;
+    width: 100%;
+    height: 100%;
+    background: #020617;
+    z-index: 999;
     padding: 20px;
-    box-sizing: border-box;
 }
 
-.fullscreen-overlay textarea {
-    flex-grow: 1;
-    font-size: 1.2rem;
-    margin-top: 10px;
+.fullscreen textarea {
+    height: 85%;
+    font-size: 1.1rem;
 }
 
 .overlay-header {
