@@ -1,2 +1,2 @@
-# Scooby-
+# Scooby-Doo
 Text Encoder-Decoder
