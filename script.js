@@ -1,14 +1,65 @@
 // --- CONFIG & STATE ---
 let historyStack = [];
-let redoStack = [];
 const MAX_HISTORY_AGE = 10000; // 10 seconds
 
-// --- HELPERS ---
+// --- 1. BOUNCY KEY LOGIC ---
+// This ensures that (Empty) and "00000" are treated as the exact same key.
 function getActiveKey() {
-    const val = document.getElementById('secretKey').value;
-    return val.trim() === "" ? "00000" : val;
+    const inputKey = document.getElementById('secretKey').value.trim();
+    return inputKey === "" ? "00000" : inputKey;
 }
 
+// --- 2. THE ENGINE (Deterministic & Reversible) ---
+function scoobyEngine(text, isEncoding) {
+    if (!text) return "";
+    const key = getActiveKey();
+    const keyCodes = Array.from(key).map(c => c.charCodeAt(0));
+    
+    // Seed-based shift logic
+    const seed = keyCodes.reduce((a, b) => a + b, 0);
+    
+    try {
+        if (isEncoding) {
+            // Step A: Nonlinear Shift & XOR
+            let encodedChars = text.split('').map((char, i) => {
+                const charCode = char.charCodeAt(0);
+                const keyChar = keyCodes[i % keyCodes.length];
+                // Math: (Char + KeyOffset + NonlinearSeed)
+                return charCode + keyChar + (seed % 13);
+            });
+            // Step B: Wrap in Base64 for safe transport
+            return btoa(JSON.stringify(encodedChars));
+        } else {
+            // Step A: Unwrap Base64
+            const data = JSON.parse(atob(text));
+            // Step B: Reverse Math
+            let decoded = data.map((code, i) => {
+                const keyChar = keyCodes[i % keyCodes.length];
+                const originalCharCode = code - keyChar - (seed % 13);
+                return String.fromCharCode(originalCharCode);
+            });
+            return decoded.join('');
+        }
+    } catch (e) {
+        console.error(e);
+        return "❌ DECODE FAILED: Check your key or code!";
+    }
+}
+
+// --- 3. UI HANDLERS ---
+document.getElementById('encodeBtn').addEventListener('click', () => {
+    saveState();
+    const input = document.getElementById('inputText').value;
+    document.getElementById('outputText').value = scoobyEngine(input, true);
+});
+
+document.getElementById('decodeBtn').addEventListener('click', () => {
+    saveState();
+    const input = document.getElementById('inputText').value;
+    document.getElementById('outputText').value = scoobyEngine(input, false);
+});
+
+// --- 4. HISTORY & FULLSCREEN (Stays the same) ---
 function saveState() {
     const state = {
         input: document.getElementById('inputText').value,
@@ -16,118 +67,55 @@ function saveState() {
         time: Date.now()
     };
     historyStack.push(state);
-    if (historyStack.length > 30) historyStack.shift();
-    redoStack = []; 
+    if (historyStack.length > 20) historyStack.shift();
 }
 
-// --- NONLINEAR ENGINE ---
-function getSequence(key, length) {
-    let seed = Array.from(key).reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    let seq = [];
-    let x = seed;
-    for (let i = 0; i < length; i++) {
-        x = (3 * Math.pow(x, 2) + 7 * x + 11) % 255;
-        seq.push(Math.floor(x));
-    }
-    return seq;
-}
-
-function getPermutation(length, key) {
-    let indices = Array.from({length}, (_, i) => i);
-    let seed = Array.from(key).reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    for (let i = length - 1; i > 0; i--) {
-        const j = Math.floor((seed * (i + 1)) / 0xFFFF) % (i + 1);
-        [indices[i], indices[j]] = [indices[j], indices[i]];
-        seed = (seed * 9301 + 49297) % 233280;
-    }
-    return indices;
-}
-
-function scoobyEngine(text, isEncoding) {
-    if (!text) return "";
-    const key = getActiveKey();
-    const len = text.length;
-    const seq = getSequence(key, len);
-    const p = getPermutation(len, key);
-    let result = new Array(len);
-
-    try {
-        if (isEncoding) {
-            let transformed = text.split('').map((char, i) => {
-                let code = char.charCodeAt(0) ^ seq[i];
-                return (code + Math.pow(key.charCodeAt(i % key.length), 2)) % 65535;
-            });
-            p.forEach((origIdx, newIdx) => { result[newIdx] = transformed[origIdx]; });
-            return btoa(JSON.stringify(result));
-        } else {
-            const data = JSON.parse(atob(text));
-            let unpermuted = new Array(data.length);
-            p.forEach((origIdx, newIdx) => { unpermuted[origIdx] = data[newIdx]; });
-            let final = unpermuted.map((code, i) => {
-                let step1 = (code - Math.pow(key.charCodeAt(i % key.length), 2));
-                while (step1 < 0) step1 += 65535;
-                return String.fromCharCode(step1 ^ seq[i]);
-            });
-            return final.join('');
-        }
-    } catch (e) { return "❌ INVALID CODE OR KEY"; }
-}
-
-// --- UI CONTROLS ---
-document.getElementById('encodeBtn').addEventListener('click', () => {
-    saveState();
-    document.getElementById('outputText').value = scoobyEngine(document.getElementById('inputText').value, true);
-});
-
-document.getElementById('decodeBtn').addEventListener('click', () => {
-    saveState();
-    document.getElementById('outputText').value = scoobyEngine(document.getElementById('inputText').value, false);
-});
-
-// Undo Logic (10-second filter)
 document.getElementById('undoBtn').addEventListener('click', () => {
     const now = Date.now();
     if (historyStack.length > 0) {
-        const lastState = historyStack.pop();
-        if (now - lastState.time <= MAX_HISTORY_AGE) {
-            redoStack.push({
-                input: document.getElementById('inputText').value,
-                output: document.getElementById('outputText').value
-            });
-            document.getElementById('inputText').value = lastState.input;
-            document.getElementById('outputText').value = lastState.output;
+        const last = historyStack.pop();
+        if (now - last.time <= MAX_HISTORY_AGE) {
+            document.getElementById('inputText').value = last.input;
+            document.getElementById('outputText').value = last.output;
         } else {
-            alert("Mystery expired! (10s limit)");
+            alert("Mystery too old! (10s limit)");
         }
     }
 });
 
-// Full Screen Support
-let activeSourceId = null;
+// Fullscreen Logic
 window.openFull = function(id) {
-    activeSourceId = id;
     const overlay = document.getElementById('fullScreenOverlay');
     const fullArea = document.getElementById('fullArea');
-    const sourceArea = document.getElementById(id);
-    fullArea.value = sourceArea.value;
-    fullArea.readOnly = sourceArea.readOnly;
+    const source = document.getElementById(id);
+    fullArea.value = source.value;
+    fullArea.readOnly = source.readOnly;
+    fullArea.dataset.sourceId = id; // Store which one we're editing
     overlay.style.display = 'flex';
 };
 
 window.closeFull = function() {
-    if (activeSourceId && !document.getElementById('fullArea').readOnly) {
-        document.getElementById(activeSourceId).value = document.getElementById('fullArea').value;
+    const fullArea = document.getElementById('fullArea');
+    const sourceId = fullArea.dataset.sourceId;
+    if (sourceId && !fullArea.readOnly) {
+        document.getElementById(sourceId).value = fullArea.value;
     }
     document.getElementById('fullScreenOverlay').style.display = 'none';
 };
 
-document.getElementById('clearBtn').addEventListener('click', () => {
-    saveState();
-    document.getElementById('inputText').value = "";
-    document.getElementById('outputText').value = "";
+document.getElementById('copyBtn').addEventListener('click', () => {
+    const res = document.getElementById('outputText').value;
+    navigator.clipboard.writeText(res);
+    alert("Copied to clipboard!");
 });
 
 document.getElementById('pasteBtn').addEventListener('click', async () => {
     const text = await navigator.clipboard.readText();
     document.getElementById('inputText').value = text;
+});
+
+document.getElementById('clearBtn').addEventListener('click', () => {
+    saveState();
+    document.getElementById('inputText').value = "";
+    document.getElementById('outputText').value = "";
 });
