@@ -87,3 +87,4 @@ document.getElementById('pasteBtn').addEventListener('click', async () => {
 document.getElementById('copyBtn').addEventListener('click', () => {
     navigator.clipboard.writeText(outputText.value);
 });
+
