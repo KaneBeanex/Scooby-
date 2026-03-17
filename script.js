@@ -175,3 +175,16 @@ document.addEventListener('keydown', (e) => {
         redo();
     }
 });
+
+// 🧹 CLEAR FUNCTION
+document.getElementById('clearBtn').addEventListener('click', () => {
+    inputText.value = "";
+    outputText.value = "";
+
+    // reset history + redo
+    history = [];
+    future = [];
+
+    // store empty state
+    saveState("");
+});
