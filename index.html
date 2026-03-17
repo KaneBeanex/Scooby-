@@ -130,6 +130,10 @@ if ('serviceWorker' in navigator) {
 function updateApp() {
     if (newWorker) {
         newWorker.postMessage('SKIP_WAITING');
+    } else {
+        window.location.reload(); // fallback
+    }
+}
     }
 }
 
