@@ -4,9 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Scooby Detective Kit Pro</title>
+
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#a3e635">
+
     <link rel="stylesheet" href="style.css">
+
     <style>
         #update-toast {
             position: fixed;
@@ -15,136 +18,152 @@
             transform: translateX(-50%);
             background: #a3e635;
             color: #000;
-            padding: 12px 24px;
+            padding: 10px 20px;
             border-radius: 50px;
             display: none;
             font-weight: bold;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.6);
-            z-index: 3000;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            z-index: 1000;
             cursor: pointer;
-            border: 2px solid #000;
-            animation: slideUp 0.3s ease-out;
         }
-        @keyframes slideUp { from { bottom: -50px; } to { bottom: 20px; } }
-        .history-bar { display: flex; gap: 10px; margin-top: 10px; }
-        .history-bar button { flex: 1; }
     </style>
 </head>
+
 <body>
-    <div id="update-toast" onclick="updateApp()">New Case Update! Tap to Refresh 🚀</div>
 
-    <div class="app-container">
-        <header>
-            <h1>🔍 SCOOBY <span class="accent">PRO</span></h1>
-            <p>Nonlinear Cryptic Messaging</p>
-        </header>
+<div id="update-toast">New Update Available! Tap to Refresh 🚀</div>
 
-        <div class="input-group">
-            <label for="secretKey">Secret Key (5+ Chars)</label>
-            <input type="text" id="secretKey" maxlength="15" placeholder="00000">
-        </div>
+<div class="app-container">
 
-        <section class="workspace">
-            <div class="label-row">
-                <label>Input Evidence</label>
-                <div>
-                    <button class="small-btn" onclick="openFull('inputText')">⛶ Full</button>
-                    <button id="pasteBtn" class="small-btn">📋 Paste</button>
-                </div>
-            </div>
-            <textarea id="inputText" placeholder="Enter message or cryptic code..."></textarea>
-            
-            <div class="controls">
-                <button id="encodeBtn" class="btn-primary">ENCODE 🔒</button>
-                <button id="decodeBtn" class="btn-secondary">DECODE 🔓</button>
-            </div>
+    <header>
+        <h1>🔍 SCOOBY <span class="accent">PRO</span></h1>
+        <p>Nonlinear Cryptic Messaging</p>
+    </header>
 
-            <div class="label-row">
-                <label>Result</label>
-                <button class="small-btn" onclick="openFull('outputText')">⛶ Full</button>
-            </div>
-            <textarea id="outputText" readonly placeholder="Result will appear here..."></textarea>
-
-            <div class="history-bar">
-                <button id="undoBtn">↶ Undo</button>
-                <button id="redoBtn">Redo ↷</button>
-                <button id="clearBtn" style="color: #ff4444; border-color: #450a0a;">🗑 Clear</button>
-            </div>
-        </section>
-
-        <footer>
-            <button id="copyBtn" class="btn-primary" style="width: 100%; margin-top: 10px; background: transparent; color: #a3e635; border: 1px solid #a3e635;">
-                Copy Result 📁
-            </button>
-        </footer>
+    <div class="input-group">
+        <label>Secret Key (5+ Chars)</label>
+        <input type="text" id="secretKey" maxlength="15" placeholder="Default: 00000">
     </div>
 
-    <!-- Fullscreen Overlay -->
-    <div id="fullScreenOverlay" class="fullscreen-overlay" style="display:none;">
-        <div class="overlay-header">
-            <h2 id="overlayTitle" class="accent">DETECTIVE FOCUS</h2>
-            <button onclick="closeFull()" class="btn-secondary" style="padding: 5px 15px;">Close ✕</button>
+    <section class="workspace">
+
+        <!-- INPUT -->
+        <div class="label-row">
+            <label>Input Evidence</label>
+            <div>
+                <button class="small-btn" onclick="openFull('inputText')">⛶ Full</button>
+                <button id="pasteBtn" class="small-btn">📋 Paste</button>
+            </div>
         </div>
-        <textarea id="fullArea" placeholder="Start writing..."></textarea>
+        <textarea id="inputText" placeholder="Enter message..."></textarea>
+
+        <!-- CONTROLS -->
+        <div class="controls">
+            <button id="encodeBtn" class="btn-primary">ENCODE 🔒</button>
+            <button id="decodeBtn" class="btn-secondary">DECODE 🔓</button>
+        </div>
+
+        <!-- OUTPUT -->
+        <div class="label-row">
+            <label>Result</label>
+            <button class="small-btn" onclick="openFull('outputText')">⛶ Full</button>
+        </div>
+        <textarea id="outputText" readonly></textarea>
+
+        <!-- HISTORY -->
+        <div class="history-bar">
+            <button id="undoBtn">Undo ↶</button>
+            <button id="clearBtn" style="color: #ff4444;">Clear 🗑</button>
+        </div>
+
+    </section>
+
+    <footer>
+        <button id="copyBtn">Copy Result 📁</button>
+    </footer>
+
+</div>
+
+<!-- FULLSCREEN OVERLAY -->
+<div id="fullScreenOverlay" class="fullscreen-overlay">
+    <div class="overlay-header">
+        <h2 class="accent">DETECTIVE FOCUS</h2>
+        <button onclick="closeFull()" class="btn-secondary">Close ✕</button>
     </div>
+    <textarea id="fullArea"></textarea>
+</div>
 
-    <script src="script.js"></script>
-    <script>
-        let newWorker;
+<script src="script.js"></script>
 
-        // Service Worker Registration
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./sw.js').then(reg => {
-                    // Check for updates on load
-                    if (reg.waiting) {
-                        showUpdateToast(reg.waiting);
+<script>
+let newWorker;
+
+// 🔄 SERVICE WORKER
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').then(reg => {
+
+            reg.addEventListener('updatefound', () => {
+                newWorker = reg.installing;
+
+                newWorker.addEventListener('statechange', () => {
+                    if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                        setTimeout(() => {
+                            document.getElementById('update-toast').style.display = 'block';
+                        }, 600);
                     }
-
-                    reg.addEventListener('updatefound', () => {
-                        newWorker = reg.installing;
-                        newWorker.addEventListener('statechange', () => {
-                            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                                showUpdateToast(newWorker);
-                            }
-                        });
-                    });
                 });
             });
 
-            let refreshing;
-            navigator.serviceWorker.addEventListener('controllerchange', () => {
-                if (refreshing) return;
-                refreshing = true;
-                window.location.reload();
-            });
-        }
+        });
+    });
 
-        function showUpdateToast(worker) {
-            newWorker = worker;
-            const toast = document.getElementById('update-toast');
-            toast.style.display = 'block';
-        }
+    let refreshing;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (refreshing) return;
+        refreshing = true;
+        window.location.reload();
+    });
+}
 
-        function updateApp() {
-            if (newWorker) {
-                newWorker.postMessage({ action: 'skipWaiting' });
-            }
-        }
+// 🔥 UPDATE TRIGGER
+function updateApp() {
+    if (newWorker) {
+        newWorker.postMessage('SKIP_WAITING');
+    }
+}
 
-        // Quick UI Logic (To ensure buttons work if script.js is missing basics)
-        function openFull(id) {
-            const overlay = document.getElementById('fullScreenOverlay');
-            const fullArea = document.getElementById('fullArea');
-            const source = document.getElementById(id);
-            fullArea.value = source.value;
-            overlay.style.display = 'flex';
-            // Sync back logic should be in script.js
-        }
+document.getElementById('update-toast').addEventListener('click', updateApp);
 
-        function closeFull() {
-            document.getElementById('fullScreenOverlay').style.display = 'none';
-        }
-    </script>
+
+// =======================
+// 🖥️ FULLSCREEN LOGIC
+// =======================
+let currentTarget = null;
+
+function openFull(id) {
+    const overlay = document.getElementById('fullScreenOverlay');
+    const fullArea = document.getElementById('fullArea');
+
+    currentTarget = document.getElementById(id);
+
+    fullArea.value = currentTarget.value;
+    overlay.style.display = 'block';
+    fullArea.focus();
+}
+
+function closeFull() {
+    const overlay = document.getElementById('fullScreenOverlay');
+    const fullArea = document.getElementById('fullArea');
+
+    if (currentTarget) {
+        currentTarget.value = fullArea.value;
+    }
+
+    overlay.style.display = 'none';
+    currentTarget = null;
+}
+</script>
+
 </body>
 </html>
