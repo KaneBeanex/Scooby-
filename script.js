@@ -84,14 +84,20 @@ function scoobyEngine(text, key, isEncoding) {
 // =======================
 let history = [];
 let future = [];
+const MAX_HISTORY = 50; // Replaced 10-second timer with a 50-step limit
 
 function saveState(value) {
-    const now = Date.now();
+    // Prevent saving identical back-to-back states
+    if (history.length > 0 && history[history.length - 1].text === value) {
+        return;
+    }
 
-    history.push({ text: value, time: now });
+    history.push({ text: value });
 
-    // Keep last 10 seconds only
-    history = history.filter(h => now - h.time <= 10000);
+    // Keep memory clean by limiting history size
+    if (history.length > MAX_HISTORY) {
+        history.shift(); 
+    }
 
     // Clear redo stack on new input
     future = [];
@@ -107,6 +113,10 @@ function undo() {
     if (history.length > 1) {
         future.push(history.pop());
         inputText.value = history[history.length - 1].text;
+    } else if (history.length === 1) {
+        // If we only have one item left, undoing should empty the box
+        future.push(history.pop());
+        inputText.value = "";
     }
 }
 
@@ -162,6 +172,27 @@ document.getElementById('copyBtn').addEventListener('click', async () => {
     }
 });
 
+// 🧹 CLEAR FUNCTION
+document.getElementById('clearBtn').addEventListener('click', () => {
+    saveState(""); // Save the empty state so we can undo the clear
+    inputText.value = "";
+    outputText.value = "";
+});
+
+// 🖥️ FULL-SCREEN TOGGLE
+const fullscreenBtn = document.getElementById('fullscreenBtn'); 
+if (fullscreenBtn) {
+    fullscreenBtn.addEventListener('click', () => {
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen().catch(err => {
+                console.error(`Error attempting to enable fullscreen: ${err.message}`);
+            });
+        } else {
+            document.exitFullscreen();
+        }
+    });
+}
+
 // =======================
 // ⌨️ SHORTCUTS
 // =======================
@@ -174,17 +205,4 @@ document.addEventListener('keydown', (e) => {
         e.preventDefault();
         redo();
     }
-});
-
-// 🧹 CLEAR FUNCTION
-document.getElementById('clearBtn').addEventListener('click', () => {
-    inputText.value = "";
-    outputText.value = "";
-
-    // reset history + redo
-    history = [];
-    future = [];
-
-    // store empty state
-    saveState("");
 });
