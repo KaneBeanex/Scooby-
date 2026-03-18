@@ -84,23 +84,16 @@ function scoobyEngine(text, key, isEncoding) {
 // =======================
 let history = [];
 let future = [];
-const MAX_HISTORY = 50; // Replaced 10-second timer with a 50-step limit
+
+// Initialize history with an empty state
+history.push({ text: "" });
 
 function saveState(value) {
-    // Prevent saving identical back-to-back states
-    if (history.length > 0 && history[history.length - 1].text === value) {
-        return;
+    // Only save if the value is different from the current state
+    if (history.length === 0 || history[history.length - 1].text !== value) {
+        history.push({ text: value });
+        future = []; // Clear redo stack on new input
     }
-
-    history.push({ text: value });
-
-    // Keep memory clean by limiting history size
-    if (history.length > MAX_HISTORY) {
-        history.shift(); 
-    }
-
-    // Clear redo stack on new input
-    future = [];
 }
 
 // Track typing
@@ -113,10 +106,6 @@ function undo() {
     if (history.length > 1) {
         future.push(history.pop());
         inputText.value = history[history.length - 1].text;
-    } else if (history.length === 1) {
-        // If we only have one item left, undoing should empty the box
-        future.push(history.pop());
-        inputText.value = "";
     }
 }
 
@@ -128,6 +117,10 @@ function redo() {
         inputText.value = next.text;
     }
 }
+
+// Connect Undo/Redo Buttons
+document.getElementById('undoBtn').addEventListener('click', undo);
+document.getElementById('redoBtn').addEventListener('click', redo);
 
 // =======================
 // 🎯 UI ACTIONS
@@ -172,27 +165,6 @@ document.getElementById('copyBtn').addEventListener('click', async () => {
     }
 });
 
-// 🧹 CLEAR FUNCTION
-document.getElementById('clearBtn').addEventListener('click', () => {
-    saveState(""); // Save the empty state so we can undo the clear
-    inputText.value = "";
-    outputText.value = "";
-});
-
-// 🖥️ FULL-SCREEN TOGGLE
-const fullscreenBtn = document.getElementById('fullscreenBtn'); 
-if (fullscreenBtn) {
-    fullscreenBtn.addEventListener('click', () => {
-        if (!document.fullscreenElement) {
-            document.documentElement.requestFullscreen().catch(err => {
-                console.error(`Error attempting to enable fullscreen: ${err.message}`);
-            });
-        } else {
-            document.exitFullscreen();
-        }
-    });
-}
-
 // =======================
 // ⌨️ SHORTCUTS
 // =======================
@@ -205,4 +177,13 @@ document.addEventListener('keydown', (e) => {
         e.preventDefault();
         redo();
     }
+});
+
+// 🧹 CLEAR FUNCTION (Fixed to support undo)
+document.getElementById('clearBtn').addEventListener('click', () => {
+    inputText.value = "";
+    outputText.value = "";
+    
+    // Save the empty state to history so the user can undo the clear action!
+    saveState("");
 });
