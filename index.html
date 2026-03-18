@@ -47,7 +47,6 @@
 
     <section class="workspace">
 
-        <!-- INPUT -->
         <div class="label-row">
             <label>Input Evidence</label>
             <div>
@@ -57,20 +56,17 @@
         </div>
         <textarea id="inputText" placeholder="Enter message..."></textarea>
 
-        <!-- CONTROLS -->
         <div class="controls">
             <button id="encodeBtn" class="btn-primary">ENCODE 🔒</button>
             <button id="decodeBtn" class="btn-secondary">DECODE 🔓</button>
         </div>
 
-        <!-- OUTPUT -->
         <div class="label-row">
             <label>Result</label>
             <button class="small-btn" onclick="openFull('outputText')">⛶ Full</button>
         </div>
         <textarea id="outputText" readonly></textarea>
 
-        <!-- HISTORY -->
         <div class="history-bar">
             <button id="undoBtn">Undo ↶</button>
             <button id="redoBtn">Redo ↻</button>
@@ -85,8 +81,7 @@
 
 </div>
 
-<!-- FULLSCREEN OVERLAY -->
-<div id="fullScreenOverlay" class="fullscreen-overlay">
+<div id="fullScreenOverlay" class="fullscreen-overlay" style="display: none;">
     <div class="overlay-header">
         <h2 class="accent">DETECTIVE FOCUS</h2>
         <button onclick="closeFull()" class="btn-secondary">Close ✕</button>
@@ -127,7 +122,7 @@ if ('serviceWorker' in navigator) {
     });
 }
 
-// 🔥 UPDATE TRIGGER
+// 🔥 UPDATE TRIGGER (Syntax error fixed here)
 function updateApp() {
     if (newWorker) {
         newWorker.postMessage('SKIP_WAITING');
@@ -135,11 +130,8 @@ function updateApp() {
         window.location.reload(); // fallback
     }
 }
-    }
-}
 
 document.getElementById('update-toast').addEventListener('click', updateApp);
-
 
 // =======================
 // 🖥️ FULLSCREEN LOGIC
@@ -162,7 +154,13 @@ function closeFull() {
     const fullArea = document.getElementById('fullArea');
 
     if (currentTarget) {
+        // Push full screen text back to the main input
         currentTarget.value = fullArea.value;
+        
+        // If we were editing the input text, save it to history for Undo/Redo
+        if (currentTarget.id === 'inputText' && typeof saveState === 'function') {
+            saveState(currentTarget.value);
+        }
     }
 
     overlay.style.display = 'none';
