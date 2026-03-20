@@ -4,7 +4,10 @@ const outputText = document.getElementById('outputText');
 
 // 🔐 Normalize key
 function normalizeKey(key) {
-    return (key && key.length >= 5) ? key : "00000";
+    if (!key || key.length < 5) {
+        throw new Error("Key must be at least 5 characters long");
+    }
+    return key;
 }
 
 // --- HELPER: Sequence ---
@@ -39,6 +42,29 @@ function getPermutation(length, key) {
     return indices;
 }
 
+// --- Base64 helpers for raw bytes ---
+function bytesToBase64(bytes) {
+    let binary = "";
+    const chunkSize = 0x8000;
+
+    for (let i = 0; i < bytes.length; i += chunkSize) {
+        binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+    }
+
+    return btoa(binary);
+}
+
+function base64ToBytes(b64) {
+    const binary = atob(b64);
+    const bytes = new Uint8Array(binary.length);
+
+    for (let i = 0; i < binary.length; i++) {
+        bytes[i] = binary.charCodeAt(i);
+    }
+
+    return bytes;
+}
+
 // --- ENGINE ---
 function scoobyEngine(text, key, isEncoding) {
     key = normalizeKey(key);
@@ -47,37 +73,63 @@ function scoobyEngine(text, key, isEncoding) {
     const len = text.length;
     const seq = getSequence(key, len);
     const p = getPermutation(len, key);
-    let result = new Array(len);
 
     if (isEncoding) {
-        let transformed = text.split('').map((char, i) => {
-            let code = char.charCodeAt(0) ^ seq[i];
-            let k = key.charCodeAt(i % key.length);
-            return (code + (k * k)) % 65535;
-        });
+        // Transform to numeric values
+        const transformed = new Uint16Array(len);
 
+        for (let i = 0; i < len; i++) {
+            const code = text.charCodeAt(i) ^ seq[i];
+            const k = key.charCodeAt(i % key.length);
+            transformed[i] = (code + (k * k)) % 65535;
+        }
+
+        // Permute
+        const permuted = new Uint16Array(len);
         p.forEach((originalIndex, newIndex) => {
-            result[newIndex] = transformed[originalIndex];
+            permuted[newIndex] = transformed[originalIndex];
         });
 
-        return btoa(JSON.stringify(result));
-
+        // Pack raw bytes, then base64
+        const bytes = new Uint8Array(permuted.buffer);
+        return bytesToBase64(bytes);
     } else {
-        let unpermuted = new Array(len);
+        // Decode base64 to bytes
+        const bytes = base64ToBytes(text);
 
+        if (bytes.byteLength % 2 !== 0) {
+            throw new Error("Corrupt payload");
+        }
+
+        const values = new Uint16Array(
+            bytes.buffer,
+            bytes.byteOffset,
+            bytes.byteLength / 2
+        );
+
+        if (values.length !== len) {
+            throw new Error("Length mismatch or wrong key");
+        }
+
+        // Unpermute
+        const unpermuted = new Uint16Array(len);
         p.forEach((originalIndex, newIndex) => {
-            unpermuted[originalIndex] = text[newIndex];
+            unpermuted[originalIndex] = values[newIndex];
         });
 
-        result = unpermuted.map((code, i) => {
-            let k = key.charCodeAt(i % key.length);
-            let step1 = (code - (k * k) + 65535) % 65535;
-            return String.fromCharCode(step1 ^ seq[i]);
-        });
+        // Reverse transform
+        let result = new Array(len);
 
-        return result.join('');
+        for (let i = 0; i < len; i++) {
+            const k = key.charCodeAt(i % key.length);
+            const step1 = (unpermuted[i] - (k * k) + 65535) % 65535;
+            result[i] = String.fromCharCode(step1 ^ seq[i]);
+        }
+
+        return result.join("");
     }
 }
+
 
 // =======================
 // 🔁 UNDO / REDO SYSTEM
