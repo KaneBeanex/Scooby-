@@ -1,4 +1,4 @@
-const CACHE_NAME = 'scooby-v.0.4.0';
+const CACHE_NAME = 'bingo-v1.0.0.5'; 
 
 const ASSETS = [
   './',
@@ -12,14 +12,8 @@ const ASSETS = [
 
 // 🟡 INSTALL
 self.addEventListener('install', event => {
-  self.skipWaiting(); // 🔥 ensure new SW moves forward
-
   event.waitUntil(
-    caches.open(CACHE_NAME).then(cache =>
-      Promise.allSettled(
-        ASSETS.map(asset => cache.add(asset))
-      )
-    )
+    caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS))
   );
 });
 
@@ -36,8 +30,7 @@ self.addEventListener('activate', event => {
       )
     )
   );
-
-  return self.clients.claim(); // 🔥 take control immediately
+  return self.clients.claim(); // Take control immediately
 });
 
 // 🔥 FORCE UPDATE WHEN USER CLICKS
@@ -47,9 +40,22 @@ self.addEventListener('message', event => {
   }
 });
 
-// 🔵 FETCH
+// 🔵 FETCH (Upgraded for strict WebAPK validation)
 self.addEventListener('fetch', event => {
+  // 1. Handle Navigation requests (loading the HTML page)
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      caches.match('./index.html').then(response => {
+        return response || fetch(event.request);
+      }).catch(() => caches.match('./index.html')) // Guaranteed offline fallback
+    );
+    return;
+  }
+
+  // 2. Handle standard asset requests (CSS, JS, Images)
   event.respondWith(
-    caches.match(event.request).then(res => res || fetch(event.request))
+    caches.match(event.request).then(response => {
+      return response || fetch(event.request);
+    })
   );
 });
