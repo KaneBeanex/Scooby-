@@ -1,12 +1,13 @@
 {
-  "name": "Mystery Inc. Detective Kit",
-  "short_name": "Scooby!",
-  "start_url": "./",
+  "id": "bingo-blink-v1",
+  "name": "Bingo in a Blink: Mark. Line. Win!",
+  "short_name": "BINGO!",
+  "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
   "background_color": "#0f172a",
   "theme_color": "#a3e635",
-  "description": "Cryptic nonlinear messaging tool for detectives.",
+  "description": "A real-time, cross-platform PWA Bingo game.",
   "icons": [
     {
       "src": "icon-192.png",
