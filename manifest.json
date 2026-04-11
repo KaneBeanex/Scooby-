@@ -1,13 +1,13 @@
 {
-  "id": "bingo-blink-v1",
-  "name": "Bingo in a Blink: Mark. Line. Win!",
-  "short_name": "BINGO!",
+  "id": "Scooby!-v1",
+  "name": "Scooby-Doo! Mystery Inc.",
+  "short_name": "Scooby!",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
   "background_color": "#0f172a",
   "theme_color": "#a3e635",
-  "description": "A real-time, cross-platform PWA Bingo game.",
+  "description": "A real-time, cryptic message encoder-decoder",
   "icons": [
     {
       "src": "icon-192.png",
