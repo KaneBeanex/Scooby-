@@ -1,192 +1,231 @@
-const secretKey = document.getElementById('secretKey');
-const inputText = document.getElementById('inputText');
-const outputText = document.getElementById('outputText');
+// =======================
+// 🔐 CORE CONFIG
+// =======================
+const DEFAULT_KEY = "00000";
 
-// 🔐 Normalize key
+// =======================
+// 🔑 KEY UTILS
+// =======================
 function normalizeKey(key) {
-return (key && key.length >= 5) ? key : "00000";
+    return (key && key.length >= 5) ? key : DEFAULT_KEY;
 }
 
-// --- HELPER: Sequence ---
-function getSequence(key, length) {
-key = normalizeKey(key);
-
-let seed = Array.from(key).reduce((acc, char) => acc + char.charCodeAt(0), 0);    
-let seq = [];    
-let x = seed;    
-
-for (let i = 0; i < length; i++) {    
-    x = (3 * x * x + 7 * x + 11) % 255;    
-    seq.push(Math.floor(x));    
-}    
-
-return seq;
-
-}
-
-// --- HELPER: Permutation ---
-function getPermutation(length, key) {
-key = normalizeKey(key);
-
-let indices = Array.from({ length }, (_, i) => i);    
-let seed = Array.from(key).reduce((acc, char) => acc + char.charCodeAt(0), 0);    
-
-for (let i = length - 1; i > 0; i--) {    
-    const j = Math.floor((seed * (i + 1)) / 0xFFFF) % (i + 1);    
-    [indices[i], indices[j]] = [indices[j], indices[i]];    
-    seed = (seed * 9301 + 49297) % 233280;    
-}    
-
-return indices;
-
-}
-
-// --- ENGINE ---
-function scoobyEngine(text, key, isEncoding) {
-key = normalizeKey(key);
-if (!text) return "";
-
-const len = text.length;    
-const seq = getSequence(key, len);    
-const p = getPermutation(len, key);    
-let result = new Array(len);    
-
-if (isEncoding) {    
-    let transformed = text.split('').map((char, i) => {    
-        let code = char.charCodeAt(0) ^ seq[i];    
-        let k = key.charCodeAt(i % key.length);    
-        return (code + (k * k)) % 65535;    
-    });    
-
-    p.forEach((originalIndex, newIndex) => {    
-        result[newIndex] = transformed[originalIndex];    
-    });    
-
-    return btoa(JSON.stringify(result));    
-
-} else {    
-    let unpermuted = new Array(len);    
-
-    p.forEach((originalIndex, newIndex) => {    
-        unpermuted[originalIndex] = text[newIndex];    
-    });    
-
-    result = unpermuted.map((code, i) => {    
-        let k = key.charCodeAt(i % key.length);    
-        let step1 = (code - (k * k) + 65535) % 65535;    
-        return String.fromCharCode(step1 ^ seq[i]);    
-    });    
-
-    return result.join('');    
-}
-
+function keySeed(key) {
+    return Array.from(key).reduce((acc, c) => acc + c.charCodeAt(0), 0);
 }
 
 // =======================
-// 🔁 UNDO / REDO SYSTEM
+// 🔢 SEQUENCE GENERATOR (Optimized)
 // =======================
-let history = [];
-let future = [];
+function getSequence(len, seed) {
+    const seq = new Uint8Array(len);
+    let x = seed;
 
-// Initialize history with an empty state
-history.push({ text: "" });
-
-function saveState(value) {
-    // Only save if the value is different from the current state
-    if (history.length === 0 || history[history.length - 1].text !== value) {
-        history.push({ text: value });
-        future = []; // Clear redo stack on new input
+    for (let i = 0; i < len; i++) {
+        x = (3 * x * x + 7 * x + 11) & 255; // faster than %
+        seq[i] = x;
     }
+    return seq;
 }
 
-// Track typing
-inputText.addEventListener('input', () => {
-    saveState(inputText.value);
+// =======================
+// 🔀 PERMUTATION (Fisher-Yates)
+// =======================
+function getPermutation(len, seed) {
+    const p = new Uint16Array(len);
+    for (let i = 0; i < len; i++) p[i] = i;
+
+    let x = seed;
+
+    for (let i = len - 1; i > 0; i--) {
+        x = (x * 9301 + 49297) % 233280;
+        const j = x % (i + 1);
+
+        [p[i], p[j]] = [p[j], p[i]];
+    }
+
+    return p;
+}
+
+// =======================
+// 📦 BINARY CODEC (ULTRA COMPACT)
+// =======================
+const Codec = {
+    encode(arr) {
+        return btoa(String.fromCharCode(...arr));
+    },
+
+    decode(str) {
+        const bin = atob(str);
+        const arr = new Uint8Array(bin.length);
+
+        for (let i = 0; i < bin.length; i++) {
+            arr[i] = bin.charCodeAt(i);
+        }
+        return arr;
+    }
+};
+
+// =======================
+// ⚙️ ENCRYPTION ENGINE
+// =======================
+const Engine = {
+    encode(text, key) {
+        key = normalizeKey(key);
+        if (!text) return "";
+
+        const len = text.length;
+        const seed = keySeed(key);
+
+        const seq = getSequence(len, seed);
+        const perm = getPermutation(len, seed);
+
+        const temp = new Uint8Array(len);
+
+        // 🔐 Transform
+        for (let i = 0; i < len; i++) {
+            let c = text.charCodeAt(i);
+            let k = key.charCodeAt(i % key.length);
+
+            temp[i] = (c ^ seq[i] ^ k) & 255;
+        }
+
+        // 🔀 Permute
+        const out = new Uint8Array(len);
+        for (let i = 0; i < len; i++) {
+            out[i] = temp[perm[i]];
+        }
+
+        return Codec.encode(out);
+    },
+
+    decode(base64, key) {
+        key = normalizeKey(key);
+        if (!base64) return "";
+
+        const data = Codec.decode(base64);
+        const len = data.length;
+        const seed = keySeed(key);
+
+        const seq = getSequence(len, seed);
+        const perm = getPermutation(len, seed);
+
+        // 🔁 Reverse permutation
+        const temp = new Uint8Array(len);
+        for (let i = 0; i < len; i++) {
+            temp[perm[i]] = data[i];
+        }
+
+        // 🔓 Reverse transform
+        let result = "";
+        for (let i = 0; i < len; i++) {
+            let k = key.charCodeAt(i % key.length);
+            let c = temp[i] ^ seq[i] ^ k;
+            result += String.fromCharCode(c);
+        }
+
+        return result;
+    }
+};
+
+
+// =======================
+// 🎯 UI CONTROLLER
+// =======================
+const UI = (() => {
+    const el = id => document.getElementById(id);
+
+    const input = el('inputText');
+    const output = el('outputText');
+    const key = el('secretKey');
+
+    return {
+        encode() {
+            output.value = Engine.encode(input.value, key.value);
+        },
+
+        decode() {
+            try {
+                output.value = Engine.decode(input.value.trim(), key.value);
+            } catch {
+                output.value = "❌ Invalid key or corrupted data.";
+            }
+        },
+
+        clear() {
+            input.value = "";
+            output.value = "";
+        },
+
+        copy() {
+            navigator.clipboard.writeText(output.value);
+        },
+
+        async paste() {
+            input.value = await navigator.clipboard.readText();
+        }
+    };
+})();
+
+
+// =======================
+// 🧠 HISTORY SYSTEM
+// =======================
+const History = (() => {
+    let stack = [""];
+    let redoStack = [];
+
+    return {
+        save(val) {
+            if (stack[stack.length - 1] !== val) {
+                stack.push(val);
+                redoStack = [];
+            }
+        },
+
+        undo(input) {
+            if (stack.length > 1) {
+                redoStack.push(stack.pop());
+                input.value = stack[stack.length - 1];
+            }
+        },
+
+        redo(input) {
+            if (redoStack.length) {
+                const val = redoStack.pop();
+                stack.push(val);
+                input.value = val;
+            }
+        }
+    };
+})();
+
+// =======================
+// 🔗 EVENTS
+// =======================
+const input = document.getElementById('inputText');
+
+input.addEventListener('input', () => {
+    History.save(input.value);
 });
 
-// Undo
-function undo() {
-    if (history.length > 1) {
-        future.push(history.pop());
-        inputText.value = history[history.length - 1].text;
-    }
-}
+document.getElementById('encodeBtn').onclick = UI.encode;
+document.getElementById('decodeBtn').onclick = UI.decode;
+document.getElementById('clearBtn').onclick = UI.clear;
+document.getElementById('copyBtn').onclick = UI.copy;
+document.getElementById('pasteBtn').onclick = UI.paste;
 
-// Redo
-function redo() {
-    if (future.length > 0) {
-        const next = future.pop();
-        history.push(next);
-        inputText.value = next.text;
-    }
-}
+document.getElementById('undoBtn').onclick = () => History.undo(input);
+document.getElementById('redoBtn').onclick = () => History.redo(input);
 
-// Connect Undo/Redo Buttons
-document.getElementById('undoBtn').addEventListener('click', undo);
-document.getElementById('redoBtn').addEventListener('click', redo);
-
-// =======================
-// 🎯 UI ACTIONS
-// =======================
-
-// Encode
-document.getElementById('encodeBtn').addEventListener('click', () => {
-    const res = scoobyEngine(inputText.value, secretKey.value, true);
-    outputText.value = res;
-});
-
-// Decode
-document.getElementById('decodeBtn').addEventListener('click', () => {
-    try {
-        const raw = inputText.value.trim();
-        const decoded = atob(raw);
-        const data = JSON.parse(decoded);
-
-        outputText.value = scoobyEngine(data, secretKey.value, false);
-    } catch {
-        outputText.value = "❌ ERROR: Invalid key or corrupted code.";
-    }
-});
-
-// Paste (robust)
-document.getElementById('pasteBtn').addEventListener('click', async () => {
-    try {
-        const text = await navigator.clipboard.readText();
-        inputText.value = text;
-        saveState(text);
-    } catch {
-        alert("Clipboard access denied.");
-    }
-});
-
-// Copy (robust)
-document.getElementById('copyBtn').addEventListener('click', async () => {
-    try {
-        await navigator.clipboard.writeText(outputText.value);
-    } catch {
-        alert("Copy failed.");
-    }
-});
-
-// =======================
-// ⌨️ SHORTCUTS
-// =======================
-document.addEventListener('keydown', (e) => {
+// Shortcuts
+document.addEventListener('keydown', e => {
     if (e.ctrlKey && e.key === 'z') {
         e.preventDefault();
-        undo();
+        History.undo(input);
     }
     if (e.ctrlKey && e.key === 'y') {
         e.preventDefault();
-        redo();
+        History.redo(input);
     }
-});
-
-// 🧹 CLEAR FUNCTION (Fixed to support undo)
-document.getElementById('clearBtn').addEventListener('click', () => {
-    inputText.value = "";
-    outputText.value = "";
-    
-    // Save the empty state to history so the user can undo the clear action!
-    saveState("");
 });
